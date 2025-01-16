@@ -1,16 +1,18 @@
 package dev.zagirnur.petbot.sdk;
 
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
-import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResult;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.List;
+
+import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
 
 /**
  * Упрощённый билдер для формирования ответа (send или update).
@@ -22,6 +24,8 @@ public class ReplyBuilder {
 
     private String text;
     private InlineKeyboardMarkup keyboard;
+    private boolean tagDeleteAfterUpdateMessage = false;
+    private ChatContext context;
 
     public ReplyBuilder(TelegramBotFacade bot, Update update) {
         this.bot = bot;
@@ -30,6 +34,12 @@ public class ReplyBuilder {
 
     public ReplyBuilder text(String text) {
         this.text = text;
+        return this;
+    }
+
+    public ReplyBuilder deleteAfterUpdateMessage(ChatContext context) {
+        this.tagDeleteAfterUpdateMessage = true;
+        this.context = context;
         return this;
     }
 
@@ -78,7 +88,10 @@ public class ReplyBuilder {
         }
 
         try {
-            bot.execute(sendMessage);
+            Message execute = bot.execute(sendMessage);
+            if (tagDeleteAfterUpdateMessage) {
+                context.tagMessageId(MESSSAGE_FOR_DELETE, execute.getMessageId().longValue());
+            }
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
@@ -87,7 +100,7 @@ public class ReplyBuilder {
     /**
      * Обновляем существующее сообщение (EditMessageText).
      */
-    public void update(Integer messageId) {
+    public void editMessage(Integer messageId) {
         Long chatId = extractChatId(update);
 
         EditMessageText editMessage = new EditMessageText();
@@ -101,6 +114,39 @@ public class ReplyBuilder {
 
         try {
             bot.execute(editMessage);
+            if (tagDeleteAfterUpdateMessage) {
+                context.tagMessageId(MESSSAGE_FOR_DELETE, messageId.longValue());
+            }
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void editIfCallbackMessageOrSend() {
+        if (update.hasCallbackQuery()) {
+            editCallbackMessage();
+        } else {
+            send();
+        }
+    }
+
+    public void editCallbackMessage() {
+        Long chatId = extractChatId(update);
+
+        EditMessageText editMessage = new EditMessageText();
+        editMessage.setChatId(chatId.toString());
+        editMessage.setMessageId(update.getCallbackQuery().getMessage().getMessageId());
+        editMessage.setText(text);
+
+        if (keyboard != null) {
+            editMessage.setReplyMarkup(keyboard);
+        }
+
+        try {
+            bot.execute(editMessage);
+            if (tagDeleteAfterUpdateMessage) {
+                context.tagMessageId(MESSSAGE_FOR_DELETE, update.getCallbackQuery().getMessage().getMessageId().longValue());
+            }
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
@@ -132,4 +178,14 @@ public class ReplyBuilder {
     }
 
 
+    public void deleteMessage(Long messageIdByTag) {
+        try {
+            DeleteMessage deleteMessage = new DeleteMessage();
+            deleteMessage.setChatId(update.getCallbackQuery().getMessage().getChatId().toString());
+            deleteMessage.setMessageId(messageIdByTag.intValue());
+            bot.execute(deleteMessage);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
 }

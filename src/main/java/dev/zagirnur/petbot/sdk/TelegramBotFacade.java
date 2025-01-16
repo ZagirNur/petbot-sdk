@@ -4,10 +4,12 @@ import dev.zagirnur.petbot.sdk.annotations.OnCallback;
 import dev.zagirnur.petbot.sdk.annotations.OnInlineQuery;
 import dev.zagirnur.petbot.sdk.annotations.OnMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 @Component
@@ -18,9 +20,17 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
     private final TelegramBotProperties properties; // Для токена и имени
     private final HandlerRegistry handlerRegistry;  // Для зарегистрированных обработчиков
     private final ContextProvider contextProvider;
-
+    @Lazy
     @Autowired
-    public TelegramBotFacade(TelegramBotProperties properties, HandlerRegistry handlerRegistry, ContextProvider contextProvider) {
+    private UpdatePreProcessor updatePreProcessor;
+    @Lazy
+    @Autowired
+    private ExceptionHandler exceptionHandler;
+
+    public TelegramBotFacade(TelegramBotProperties properties,
+                             HandlerRegistry handlerRegistry,
+                             ContextProvider contextProvider
+    ) {
         this.properties = properties;
         this.handlerRegistry = handlerRegistry;
         this.contextProvider = contextProvider;
@@ -51,6 +61,8 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
     }
 
     private void handleIncomingMessage(Update update) {
+        updatePreProcessor.preProcess(update, this);
+
         String text = update.getMessage().getText();
 
         String state = contextProvider.getContext(update).getState();
@@ -62,7 +74,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             if (notMatchedCommand) continue;
             boolean notMatchedPrefix = !annotation.prefix().isEmpty() && !text.startsWith(annotation.prefix());
             if (notMatchedPrefix) continue;
-            boolean notMatchedState = !annotation.state().isEmpty() && !state.equals(annotation.state());
+            boolean notMatchedState = !annotation.state().isEmpty() && !state.startsWith(annotation.state());
             if (notMatchedState) continue;
             boolean notMatchedRegexp = !annotation.regexp().isEmpty() && !text.matches(annotation.regexp());
             if (notMatchedRegexp) continue;
@@ -121,8 +133,10 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             if (chatContext != null) {
                 contextProvider.saveContext(update, chatContext);
             }
-        } catch (Exception e) {
-            e.printStackTrace(); // Логирование ошибок
+        } catch (InvocationTargetException e) {
+            exceptionHandler.handle(update, e.getTargetException());
+        } catch (Throwable e) {
+            exceptionHandler.handle(update, e);
         }
     }
 
@@ -137,7 +151,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
                 // Достаём Stateful из контекста
                 parameters[i] = contextProvider.getContext(update);
             } else {
-                throw new IllegalArgumentException("Unsupported parameter type: " + parameterTypes[i].getName());
+                parameters[i] = null;
             }
         }
 

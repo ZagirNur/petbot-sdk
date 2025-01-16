@@ -24,9 +24,11 @@ public class HandlerProcessor implements BeanPostProcessor {
         for (Method method : beanClass.getDeclaredMethods()) {
             if (method.isAnnotationPresent(OnMessage.class)) {
                 handlerRegistry.registerMessageHandler(bean, method);
-            } else if (method.isAnnotationPresent(OnCallback.class)) {
+            }
+            if (method.isAnnotationPresent(OnCallback.class)) {
                 handlerRegistry.registerCallbackHandler(bean, method);
-            } else if (method.isAnnotationPresent(OnInlineQuery.class)) {
+            }
+            if (method.isAnnotationPresent(OnInlineQuery.class)) {
                 handlerRegistry.registerInlineQueryHandler(bean, method);
             }
         }

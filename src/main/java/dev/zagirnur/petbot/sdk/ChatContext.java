@@ -1,23 +1,10 @@
 package dev.zagirnur.petbot.sdk;
 
 public interface ChatContext {
-
-    /**
-     * Возвращает текущее состояние.
-     *
-     * @return текущее состояние
-     */
     String getState();
-
-    /**
-     * Устанавливает новое состояние.
-     *
-     * @param state новое состояние
-     */
     void setState(String state);
-
-    /**
-     * Очищает состояние.
-     */
     void cleanState();
+    Long getMessageIdByTag(String tag);
+    void tagMessageId(String tag, Long messageId);
+    void deleteTag(String tag);
 }
