@@ -1,3 +1,4 @@
+//file:noinspection GroovyAssignabilityCheck
 plugins {
     // Плагин для сборки Java-библиотеки
     id 'java-library'
@@ -26,20 +27,20 @@ repositories {
 // Управление зависимостями Spring через BOM
 dependencyManagement {
     imports {
-        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.1.2'
+        mavenBom 'org.springframework.boot:spring-boot-dependencies:3.4.1'
     }
 }
 
 // Зависимости
 dependencies {
-    api 'org.springframework.boot:spring-boot-starter:3.1.2'
+    api 'org.springframework.boot:spring-boot-starter:3.4.1'
 
-    implementation 'org.telegram:telegrambots:6.5.0'       // Или самая последняя версия
-    implementation 'org.telegram:telegrambotsextensions:6.5.0'
+    implementation 'org.telegram:telegrambots:6.9.7.1'       // Или самая последняя версия
+    implementation 'org.telegram:telegrambotsextensions:6.9.7.1'
     implementation 'org.reflections:reflections:0.10.2'
-    //lombok
-    implementation 'org.projectlombok:lombok:1.18.22'
-}
+
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'}
 
 // Настройка публикации
 publishing {

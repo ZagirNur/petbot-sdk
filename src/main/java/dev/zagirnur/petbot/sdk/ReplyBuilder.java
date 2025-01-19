@@ -17,6 +17,7 @@ import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
 /**
  * Упрощённый билдер для формирования ответа (send или update).
  */
+@SuppressWarnings("unused")
 public class ReplyBuilder {
 
     private final TelegramBotFacade bot;
@@ -43,7 +44,8 @@ public class ReplyBuilder {
         return this;
     }
 
-    public ReplyBuilder inlineKeyboard(List<InlineKeyboardButton>... rows) {
+    @SafeVarargs
+    public final ReplyBuilder inlineKeyboard(List<InlineKeyboardButton>... rows) {
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         inlineKeyboardMarkup.setKeyboard(List.of(rows));
         this.keyboard = inlineKeyboardMarkup;
@@ -82,6 +84,7 @@ public class ReplyBuilder {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(chatId.toString());
         sendMessage.setText(text);
+        sendMessage.enableHtml(true);
 
         if (keyboard != null) {
             sendMessage.setReplyMarkup(keyboard);
@@ -93,7 +96,7 @@ public class ReplyBuilder {
                 context.tagMessageId(MESSSAGE_FOR_DELETE, execute.getMessageId().longValue());
             }
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -107,6 +110,7 @@ public class ReplyBuilder {
         editMessage.setChatId(chatId.toString());
         editMessage.setMessageId(messageId);
         editMessage.setText(text);
+        editMessage.enableHtml(true);
 
         if (keyboard != null) {
             editMessage.setReplyMarkup(keyboard);
@@ -118,7 +122,7 @@ public class ReplyBuilder {
                 context.tagMessageId(MESSSAGE_FOR_DELETE, messageId.longValue());
             }
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -137,6 +141,7 @@ public class ReplyBuilder {
         editMessage.setChatId(chatId.toString());
         editMessage.setMessageId(update.getCallbackQuery().getMessage().getMessageId());
         editMessage.setText(text);
+        editMessage.enableHtml(true);
 
         if (keyboard != null) {
             editMessage.setReplyMarkup(keyboard);
@@ -148,7 +153,7 @@ public class ReplyBuilder {
                 context.tagMessageId(MESSSAGE_FOR_DELETE, update.getCallbackQuery().getMessage().getMessageId().longValue());
             }
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 
@@ -171,7 +176,7 @@ public class ReplyBuilder {
         try {
             bot.execute(build);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
 
@@ -185,7 +190,7 @@ public class ReplyBuilder {
             deleteMessage.setMessageId(messageIdByTag.intValue());
             bot.execute(deleteMessage);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
