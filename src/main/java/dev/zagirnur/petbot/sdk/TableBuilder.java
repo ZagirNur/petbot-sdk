@@ -76,6 +76,11 @@ public class TableBuilder {
         return textTable(columnSeparator, columns.toArray(Column[]::new));
     }
 
+    @Override
+    public String toString() {
+        return build();
+    }
+
 
     public String textTable(
             String columnSeparator,
@@ -96,16 +101,7 @@ public class TableBuilder {
             formattedColumns.add(formattedRows);
         }
 
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < formattedColumns.get(0).size(); i++) {
-            for (int j = 0; j < columns.length; j++) {
-                result.append(formattedColumns.get(j).get(i));
-                if (j != columns.length - 1) {
-                    result.append(columnSeparator);
-                }
-            }
-            result.append("\n");
-        }
+
 
         StringBuilder header = new StringBuilder();
         for (int i = 0; i < this.header.size(); i++) {
@@ -165,7 +161,18 @@ public class TableBuilder {
                     .append(headerSeparator.toString().repeat(tinySpaceCount / 2))
                     .append("\n");
         }
-        result.insert(0, header);
+
+        StringBuilder result = new StringBuilder();
+        result.append(header);
+        for (int i = 0; i < formattedColumns.get(0).size(); i++) {
+            for (int j = 0; j < columns.length; j++) {
+                result.append(formattedColumns.get(j).get(i));
+                if (j != columns.length - 1) {
+                    result.append(columnSeparator);
+                }
+            }
+            result.append("\n");
+        }
 
         return "<code>" + result + "</code>";
     }
@@ -236,7 +243,6 @@ public class TableBuilder {
                         rawData.get(i).add(row);
                     }
                 } catch (Exception e) {
-                    rawData.get(i).add("");
                 }
             }
         }
