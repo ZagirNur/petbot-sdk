@@ -9,5 +9,5 @@ public @interface OnCallback {
     /**
      * Префикс колбэка (CallbackData), который метод будет обрабатывать.
      */
-    String prefix();
+    String prefix() default "";
 }

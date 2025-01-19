@@ -1,6 +1,9 @@
 package dev.zagirnur.petbot.sdk;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -9,7 +12,9 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
@@ -17,21 +22,20 @@ import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
 /**
  * Упрощённый билдер для формирования ответа (send или update).
  */
+@Slf4j
 @SuppressWarnings("unused")
+@RequiredArgsConstructor
 public class ReplyBuilder {
 
     private final TelegramBotFacade bot;
     private final Update update;
+    private final UpdateDataProvider updateDataProvider;
 
     private String text;
     private InlineKeyboardMarkup keyboard;
     private boolean tagDeleteAfterUpdateMessage = false;
     private ChatContext context;
 
-    public ReplyBuilder(TelegramBotFacade bot, Update update) {
-        this.bot = bot;
-        this.update = update;
-    }
 
     public ReplyBuilder text(String text) {
         this.text = text;
@@ -46,8 +50,18 @@ public class ReplyBuilder {
 
     @SafeVarargs
     public final ReplyBuilder inlineKeyboard(List<InlineKeyboardButton>... rows) {
+        List<List<InlineKeyboardButton>> rowsList = Arrays.stream(rows)
+                .map(r -> r.stream().map(btn -> {
+                    if (btn.getCallbackData() != null) {
+                        btn.setCallbackData(updateDataProvider.preSendMessage(btn.getCallbackData()));
+                    }
+                    return btn;
+                }).toList())
+                .toList();
+
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
         inlineKeyboardMarkup.setKeyboard(List.of(rows));
+
         this.keyboard = inlineKeyboardMarkup;
         return this;
     }
@@ -79,56 +93,77 @@ public class ReplyBuilder {
      * Отправляем новое сообщение (SendMessage).
      */
     public void send() {
-        Long chatId = extractChatId(update);
 
-        SendMessage sendMessage = new SendMessage();
-        sendMessage.setChatId(chatId.toString());
-        sendMessage.setText(text);
-        sendMessage.enableHtml(true);
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(getALong().toString())
+                .text(text)
+                .parseMode("HTML")
+                .replyMarkup(keyboard)
+                .build();
 
-        if (keyboard != null) {
-            sendMessage.setReplyMarkup(keyboard);
+        long messageId = executeAndGetMessageId(sendMessage);
+        if (tagDeleteAfterUpdateMessage) {
+            context.tagMessageId(MESSSAGE_FOR_DELETE, messageId);
         }
+    }
 
+    private Long getALong() {
+        Long chatId = extractChatId(update);
+        return chatId;
+    }
+
+    private long executeAndGetMessageId(SendMessage sendMessage) {
+        long messageId;
         try {
-            Message execute = bot.execute(sendMessage);
-            if (tagDeleteAfterUpdateMessage) {
-                context.tagMessageId(MESSSAGE_FOR_DELETE, execute.getMessageId().longValue());
-            }
+            messageId = bot.execute(sendMessage)
+                    .getMessageId().longValue();
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
+        return messageId;
+    }
+
+    private void execute(BotApiMethod method) {
+        long messageId;
+        try {
+            bot.execute(method);
+        }catch (TelegramApiRequestException e) {
+            e.getApiResponse().contains("message is not modified");
+            log.info("Message is not modified", method);
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     /**
      * Обновляем существующее сообщение (EditMessageText).
      */
     public void editMessage(Integer messageId) {
-        Long chatId = extractChatId(update);
 
-        EditMessageText editMessage = new EditMessageText();
-        editMessage.setChatId(chatId.toString());
-        editMessage.setMessageId(messageId);
-        editMessage.setText(text);
-        editMessage.enableHtml(true);
+        EditMessageText editMessage = EditMessageText.builder()
+                .chatId(extractChatId(update).toString())
+                .messageId(messageId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .parseMode("HTML")
+                .build();
 
-        if (keyboard != null) {
-            editMessage.setReplyMarkup(keyboard);
-        }
+        execute(editMessage);
 
-        try {
-            bot.execute(editMessage);
-            if (tagDeleteAfterUpdateMessage) {
-                context.tagMessageId(MESSSAGE_FOR_DELETE, messageId.longValue());
-            }
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
+        if (tagDeleteAfterUpdateMessage) {
+            context.tagMessageId(MESSSAGE_FOR_DELETE, messageId.longValue());
         }
     }
 
     public void editIfCallbackMessageOrSend() {
         if (update.hasCallbackQuery()) {
-            editCallbackMessage();
+            try {
+                editCallbackMessage();
+            } catch (Exception e) {
+                log.error("Error while editing message", e);
+                send();
+            }
         } else {
             send();
         }
@@ -137,23 +172,18 @@ public class ReplyBuilder {
     public void editCallbackMessage() {
         Long chatId = extractChatId(update);
 
-        EditMessageText editMessage = new EditMessageText();
-        editMessage.setChatId(chatId.toString());
-        editMessage.setMessageId(update.getCallbackQuery().getMessage().getMessageId());
-        editMessage.setText(text);
-        editMessage.enableHtml(true);
+        EditMessageText editMessage = EditMessageText.builder()
+                .chatId(chatId.toString())
+                .messageId(update.getCallbackQuery().getMessage().getMessageId())
+                .text(text)
+                .replyMarkup(keyboard)
+                .parseMode("HTML")
+                .build();
 
-        if (keyboard != null) {
-            editMessage.setReplyMarkup(keyboard);
-        }
+        execute(editMessage);
 
-        try {
-            bot.execute(editMessage);
-            if (tagDeleteAfterUpdateMessage) {
-                context.tagMessageId(MESSSAGE_FOR_DELETE, update.getCallbackQuery().getMessage().getMessageId().longValue());
-            }
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
+        if (tagDeleteAfterUpdateMessage) {
+            context.tagMessageId(MESSSAGE_FOR_DELETE, update.getCallbackQuery().getMessage().getMessageId().longValue());
         }
     }
 
@@ -167,30 +197,22 @@ public class ReplyBuilder {
     }
 
     public void sendPopup() {
-        AnswerCallbackQuery build = AnswerCallbackQuery.builder()
+        AnswerCallbackQuery method = AnswerCallbackQuery.builder()
                 .callbackQueryId(update.getCallbackQuery().getId())
                 .text(text)
                 .showAlert(true)
                 .build();
 
-        try {
-            bot.execute(build);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
-
-
+        execute(method);
     }
 
 
     public void deleteMessage(Long messageIdByTag) {
-        try {
-            DeleteMessage deleteMessage = new DeleteMessage();
-            deleteMessage.setChatId(update.getCallbackQuery().getMessage().getChatId().toString());
-            deleteMessage.setMessageId(messageIdByTag.intValue());
-            bot.execute(deleteMessage);
-        } catch (TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
+        DeleteMessage method = DeleteMessage.builder()
+                .chatId(update.getCallbackQuery().getMessage().getChatId().toString())
+                .messageId(messageIdByTag.intValue())
+                .build();
+
+        execute(method);
     }
 }

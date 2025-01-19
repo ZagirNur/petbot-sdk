@@ -6,6 +6,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 @Documented
+@TriggerAnnotation
 public @interface OnMessage {
     /**
      * Если задано, то метод будет срабатывать, 

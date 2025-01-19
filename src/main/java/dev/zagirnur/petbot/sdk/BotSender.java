@@ -1,5 +1,6 @@
 package dev.zagirnur.petbot.sdk;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -12,13 +13,11 @@ import java.util.List;
  * Класс-бин, который предоставляет удобные методы для отправки сообщений.
  */
 @Component
+@RequiredArgsConstructor
 public class BotSender {
 
     private final TelegramBotFacade botFacade;
-
-    public BotSender(TelegramBotFacade botFacade) {
-        this.botFacade = botFacade;
-    }
+    private final UpdateDataProvider updateDataProvider;
 
     /**
      * Возвращает билдер для ответа на указанный update.
@@ -26,7 +25,7 @@ public class BotSender {
     public ReplyBuilder reply(Update update) {
         // Можно внутри вернуть ваш "ReplyBuilder", которому в конструктор
         // передаём, собственно, бота (botFacade) и сам Update.
-        return new ReplyBuilder(botFacade, update);
+        return new ReplyBuilder(botFacade, update, updateDataProvider);
     }
 
     public void sendAnswerInlineQuery(String inlineQueryId, List<InlineQueryResult> results) {
