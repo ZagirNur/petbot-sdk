@@ -7,7 +7,6 @@ import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -16,6 +15,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
 
@@ -30,6 +30,8 @@ public class ReplyBuilder {
     private final TelegramBotFacade bot;
     private final Update update;
     private final UpdateDataProvider updateDataProvider;
+    private final BotI18n i18n;
+    private final Locale locale;
 
     private String text;
     private InlineKeyboardMarkup keyboard;
@@ -38,7 +40,7 @@ public class ReplyBuilder {
 
 
     public ReplyBuilder text(String text) {
-        this.text = text;
+        this.text = i18n.translate(text, locale);
         return this;
     }
 
@@ -55,6 +57,7 @@ public class ReplyBuilder {
                     if (btn.getCallbackData() != null) {
                         btn.setCallbackData(updateDataProvider.preSendMessage(btn.getCallbackData()));
                     }
+                    btn.setText(i18n.translate(btn.getText(), locale));
                     return btn;
                 }).toList())
                 .toList();

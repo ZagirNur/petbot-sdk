@@ -18,7 +18,7 @@ public class TableBuilder {
     Character headerSeparator = '-';
 
     public TableBuilder(List<String> header, Character headerSeparator, String columnSeparator) {
-        this.header = header;
+        header.addAll(header);
         this.headerSeparator = headerSeparator;
         this.columnSeparator = columnSeparator;
     }
@@ -56,6 +56,7 @@ public class TableBuilder {
     }
 
     public TableBuilder column(String columnHeader, Function<Integer, String> rowSource) {
+        header = new ArrayList<>(header);
         header.add(columns.size(), columnHeader);
         columns.add(new Column(rowSource));
         return this;
