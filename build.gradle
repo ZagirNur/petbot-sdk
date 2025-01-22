@@ -48,7 +48,7 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/ZagirNur/petbot-sdk")
+            url = uri("https://maven.pkg.github.com/${System.getenv('GIT_REPOSITORY')}")
             credentials {
                 username = System.getenv('GITHUB_ACTOR')
                 password = System.getenv('GITHUB_TOKEN')
