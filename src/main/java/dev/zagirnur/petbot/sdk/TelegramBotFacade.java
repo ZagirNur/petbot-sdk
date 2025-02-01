@@ -3,10 +3,7 @@ package dev.zagirnur.petbot.sdk;
 import dev.zagirnur.petbot.sdk.annotations.OnCallback;
 import dev.zagirnur.petbot.sdk.annotations.OnInlineQuery;
 import dev.zagirnur.petbot.sdk.annotations.OnMessage;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.stereotype.Component;
+import lombok.Getter;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
@@ -14,32 +11,39 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-@Component
-@RequiredArgsConstructor
 public class TelegramBotFacade extends TelegramLongPollingBot {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TelegramBotFacade.class);
 
-    private final TelegramBotProperties properties; // Для токена и имени
+    private final String botUsername;
+    @Getter
     private final HandlerRegistry handlerRegistry;  // Для зарегистрированных обработчиков
     private final ContextProvider contextProvider;
     private final UpdateDataProvider updateDataProvider;
+    private final UpdatePreProcessor updatePreProcessor;
+    private final ExceptionHandler exceptionHandler;
 
-    @Lazy
-    @Autowired
-    private UpdatePreProcessor updatePreProcessor;
-    @Lazy
-    @Autowired
-    private ExceptionHandler exceptionHandler;
-
-    @Override
-    public String getBotToken() {
-        return properties.getToken(); // Токен из пропертей
+    public TelegramBotFacade(
+            String botUsername,
+            String botToken,
+            HandlerRegistry handlerRegistry,
+            ContextProvider contextProvider,
+            UpdateDataProvider updateDataProvider,
+            UpdatePreProcessor updatePreProcessor,
+            ExceptionHandler exceptionHandler
+    ) {
+        super(botToken);
+        this.botUsername = botUsername;
+        this.handlerRegistry = handlerRegistry;
+        this.contextProvider = contextProvider;
+        this.updateDataProvider = updateDataProvider;
+        this.updatePreProcessor = updatePreProcessor;
+        this.exceptionHandler = exceptionHandler;
     }
 
     @Override
     public String getBotUsername() {
-        return properties.getUsername(); // Имя из пропертей
+        return botUsername;
     }
 
     @Override
@@ -63,7 +67,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
 
         String state = contextProvider.getContext(update).getState();
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getMessageHandlers()) {
-            Method method = handler.getMethod();
+            Method method = handler.method();
             OnMessage annotation = method.getAnnotation(OnMessage.class);
 
             boolean notMatchedCommand = !annotation.command().isEmpty() && !text.equals(annotation.command());
@@ -84,7 +88,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
         String callbackData = update.getCallbackQuery().getData();
 
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getCallbackHandlers()) {
-            Method method = handler.getMethod();
+            Method method = handler.method();
             OnCallback annotation = method.getAnnotation(OnCallback.class);
 
             if (callbackData.startsWith(annotation.prefix())) {
@@ -98,7 +102,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
         String inlaineQuery = update.getInlineQuery().getQuery();
 
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getInlineQueryHandlers()) {
-            Method method = handler.getMethod();
+            Method method = handler.method();
             OnInlineQuery annotation = method.getAnnotation(OnInlineQuery.class);
 
             if (annotation.prefix().isEmpty() || inlaineQuery.startsWith(annotation.prefix())) {
@@ -110,7 +114,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
 
     private void invokeHandlerMethod(Annotation annotation, HandlerRegistry.HandlerMethod handler, Update update) {
         try {
-            Method method = handler.getMethod();
+            Method method = handler.method();
             Object[] parameters = resolveParameters(annotation, method, update);
 
             // Извлекаем ChatContext, если он используется
@@ -123,7 +127,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             }
 
             // Вызываем метод обработчика
-            method.invoke(handler.getBean(), parameters);
+            method.invoke(handler.bean(), parameters);
 
             // Сохраняем контекст, если он был изменён
             if (chatContext != null) {

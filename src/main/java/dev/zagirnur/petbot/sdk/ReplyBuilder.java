@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageTe
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
@@ -27,7 +28,7 @@ import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
 @RequiredArgsConstructor
 public class ReplyBuilder {
 
-    private final TelegramBotFacade bot;
+    private final AbsSender bot;
     private final Update update;
     private final UpdateDataProvider updateDataProvider;
     private final BotI18n i18n;
@@ -53,13 +54,13 @@ public class ReplyBuilder {
     @SafeVarargs
     public final ReplyBuilder inlineKeyboard(List<InlineKeyboardButton>... rows) {
         List<List<InlineKeyboardButton>> rowsList = Arrays.stream(rows)
-                .map(r -> r.stream().map(btn -> {
-                    if (btn.getCallbackData() != null) {
-                        btn.setCallbackData(updateDataProvider.preSendMessage(btn.getCallbackData()));
-                    }
-                    btn.setText(i18n.translate(btn.getText(), locale));
-                    return btn;
-                }).toList())
+                .map(r -> r.stream()
+                        .peek(btn -> {
+                            if (btn.getCallbackData() != null) {
+                                btn.setCallbackData(updateDataProvider.preSendMessage(btn.getCallbackData()));
+                            }
+                            btn.setText(i18n.translate(btn.getText(), locale));
+                        }).toList())
                 .toList();
 
         InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
@@ -73,19 +74,22 @@ public class ReplyBuilder {
         return List.of(buttons);
     }
 
-    public static List<InlineKeyboardButton> row(String text, String callbackData) {
+    public static List<InlineKeyboardButton> row(String text,
+                                                 String callbackData) {
         return row(btn(text, callbackData));
     }
 
 
-    public static InlineKeyboardButton btn(String text, String callbackData) {
+    public static InlineKeyboardButton btn(String text,
+                                           String callbackData) {
         InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
         inlineKeyboardButton.setText(text);
         inlineKeyboardButton.setCallbackData(callbackData);
         return inlineKeyboardButton;
     }
 
-    public static InlineKeyboardButton btnSwitch(String text, String switchInlineQuery) {
+    public static InlineKeyboardButton btnSwitch(String text,
+                                                 String switchInlineQuery) {
         InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
         inlineKeyboardButton.setText(text);
         inlineKeyboardButton.setSwitchInlineQuery(switchInlineQuery);
@@ -111,8 +115,7 @@ public class ReplyBuilder {
     }
 
     private Long getALong() {
-        Long chatId = extractChatId(update);
-        return chatId;
+        return extractChatId(update);
     }
 
     private long executeAndGetMessageId(SendMessage sendMessage) {
@@ -126,13 +129,16 @@ public class ReplyBuilder {
         return messageId;
     }
 
-    private void execute(BotApiMethod method) {
+    private void execute(BotApiMethod<?> method) {
         long messageId;
         try {
             bot.execute(method);
-        }catch (TelegramApiRequestException e) {
-            e.getApiResponse().contains("message is not modified");
-            log.info("Message is not modified", method);
+        } catch (TelegramApiRequestException e) {
+            if (e.getApiResponse().contains("message is not modified")) {
+                log.info("Message is not modified {}", method);
+            } else {
+                throw new RuntimeException(e);
+            }
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
@@ -186,7 +192,8 @@ public class ReplyBuilder {
         execute(editMessage);
 
         if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSSAGE_FOR_DELETE, update.getCallbackQuery().getMessage().getMessageId().longValue());
+            context.tagMessageId(MESSSAGE_FOR_DELETE,
+                    update.getCallbackQuery().getMessage().getMessageId().longValue());
         }
     }
 
