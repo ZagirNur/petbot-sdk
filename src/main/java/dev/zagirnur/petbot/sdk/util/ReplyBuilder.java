@@ -1,5 +1,8 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.util;
 
+import dev.zagirnur.petbot.sdk.provider.BotI18n;
+import dev.zagirnur.petbot.sdk.provider.ChatContext;
+import dev.zagirnur.petbot.sdk.provider.UpdateDataProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
@@ -18,7 +21,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
-import static dev.zagirnur.petbot.sdk.UpdatePreProcessor.MESSSAGE_FOR_DELETE;
+import static dev.zagirnur.petbot.sdk.util.BotUtils.getChatId;
+import static dev.zagirnur.petbot.sdk.util.BotUtils.getMessageId;
+import static dev.zagirnur.petbot.sdk.provider.MessageDeletingPreProcessor.MESSAGE_FOR_DELETE;
 
 /**
  * Упрощённый билдер для формирования ответа (send или update).
@@ -102,7 +107,7 @@ public class ReplyBuilder {
     public void send() {
 
         SendMessage sendMessage = SendMessage.builder()
-                .chatId(getALong().toString())
+                .chatId(getChatId(update))
                 .text(text)
                 .parseMode("HTML")
                 .replyMarkup(keyboard)
@@ -110,12 +115,8 @@ public class ReplyBuilder {
 
         long messageId = executeAndGetMessageId(sendMessage);
         if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSSAGE_FOR_DELETE, messageId);
+            context.tagMessageId(MESSAGE_FOR_DELETE, messageId);
         }
-    }
-
-    private Long getALong() {
-        return extractChatId(update);
     }
 
     private long executeAndGetMessageId(SendMessage sendMessage) {
@@ -151,7 +152,7 @@ public class ReplyBuilder {
     public void editMessage(Integer messageId) {
 
         EditMessageText editMessage = EditMessageText.builder()
-                .chatId(extractChatId(update).toString())
+                .chatId(getChatId(update))
                 .messageId(messageId)
                 .text(text)
                 .replyMarkup(keyboard)
@@ -161,7 +162,7 @@ public class ReplyBuilder {
         execute(editMessage);
 
         if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSSAGE_FOR_DELETE, messageId.longValue());
+            context.tagMessageId(MESSAGE_FOR_DELETE, messageId.longValue());
         }
     }
 
@@ -179,11 +180,10 @@ public class ReplyBuilder {
     }
 
     public void editCallbackMessage() {
-        Long chatId = extractChatId(update);
 
         EditMessageText editMessage = EditMessageText.builder()
-                .chatId(chatId.toString())
-                .messageId(update.getCallbackQuery().getMessage().getMessageId())
+                .chatId(getChatId(update))
+                .messageId(getMessageId(update).intValue())
                 .text(text)
                 .replyMarkup(keyboard)
                 .parseMode("HTML")
@@ -192,18 +192,8 @@ public class ReplyBuilder {
         execute(editMessage);
 
         if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSSAGE_FOR_DELETE,
-                    update.getCallbackQuery().getMessage().getMessageId().longValue());
+            context.tagMessageId(MESSAGE_FOR_DELETE, getMessageId(update));
         }
-    }
-
-    private Long extractChatId(Update update) {
-        if (update.hasMessage()) {
-            return update.getMessage().getChatId();
-        } else if (update.hasCallbackQuery()) {
-            return update.getCallbackQuery().getMessage().getChatId();
-        }
-        return 0L;
     }
 
     public void sendPopup() {
@@ -219,7 +209,7 @@ public class ReplyBuilder {
 
     public void deleteMessage(Long messageIdByTag) {
         DeleteMessage method = DeleteMessage.builder()
-                .chatId(update.getCallbackQuery().getMessage().getChatId().toString())
+                .chatId(getChatId(update))
                 .messageId(messageIdByTag.intValue())
                 .build();
 

@@ -1,4 +1,4 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.provider;
 
 import java.util.Locale;
 

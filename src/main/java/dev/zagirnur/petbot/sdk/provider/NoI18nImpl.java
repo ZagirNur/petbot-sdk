@@ -1,6 +1,5 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.provider;
 
-import org.jvnet.hk2.annotations.Service;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 
 import java.util.Locale;

@@ -1,6 +1,5 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.provider;
 
-import dev.zagirnur.petbot.sdk.annotations.TriggerAnnotation;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.lang.annotation.Annotation;

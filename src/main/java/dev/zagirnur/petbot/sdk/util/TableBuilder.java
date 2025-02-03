@@ -1,4 +1,4 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.util;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,7 +14,7 @@ public class TableBuilder {
 
     List<Column> columns = new ArrayList<>();
     String columnSeparator = " ";
-    List<String> header = new ArrayList<>();
+    protected List<String> header = new ArrayList<>();
     Character headerSeparator = '-';
 
     public TableBuilder(List<String> header, Character headerSeparator, String columnSeparator) {

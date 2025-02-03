@@ -1,60 +1,64 @@
 package dev.zagirnur.petbot.sdk;
 
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import dev.zagirnur.petbot.sdk.util.ReplyBuilder;
+import dev.zagirnur.petbot.sdk.util.TableBuilder;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResult;
-import org.telegram.telegrambots.meta.bots.AbsSender;
+import org.telegram.telegrambots.meta.api.objects.inlinequery.result.InlineQueryResultArticle;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.util.List;
 import java.util.Locale;
 
-@SuppressWarnings("unused")
+
+@Component
+@RequiredArgsConstructor
 public class BotSender {
 
-    private final UpdateDataProvider updateDataProvider;
-    private final BotI18n i18n;
-    private final AbsSender absSender;
-
-    public BotSender(
-            String token,
-            UpdateDataProvider updateDataProvider,
-            BotI18n i18n) {
-        this.updateDataProvider = updateDataProvider;
-        this.i18n = i18n;
-        this.absSender = new TelegramLongPollingBot(token) {
-            @Override
-            public String getBotUsername() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void onUpdateReceived(Update update) {
-                throw new UnsupportedOperationException();
-            }
-        };
-    }
+    private final SenderHolderBotProcessor senderHolderBotProcessor;
 
     /**
      * Возвращает билдер для ответа на указанный update.
      */
     public ReplyBuilder reply(Update update) {
-        return new ReplyBuilder(absSender, update, updateDataProvider, i18n, Locale.ENGLISH);
+        BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(update);
+        return new ReplyBuilder(bot.bot(), update, bot.updateDataProvider(), bot.i18n(), Locale.ENGLISH);
     }
 
     public ReplyBuilder reply(Update update,
                               Locale locale) {
-        return new ReplyBuilder(absSender, update, updateDataProvider, i18n, locale);
+        BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(update);
+        return new ReplyBuilder(bot.bot(), update, bot.updateDataProvider(), bot.i18n(), locale);
     }
 
     public void sendAnswerInlineQuery(String inlineQueryId,
                                       List<InlineQueryResult> results) {
         AnswerInlineQuery answerInlineQuery = new AnswerInlineQuery();
         answerInlineQuery.setInlineQueryId(inlineQueryId);
-        answerInlineQuery.setResults(results);
+        BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(null);
+        var translatedArticles = results.stream()
+                .map(article -> {
+                    if (article instanceof InlineQueryResultArticle inlineQueryResultArticle) {
+                        String translatedTitle = bot.i18n()
+                                .translate(inlineQueryResultArticle.getTitle(), Locale.ENGLISH);
+                        inlineQueryResultArticle.setTitle(translatedTitle);
+                        if (inlineQueryResultArticle.getDescription() != null) {
+                            inlineQueryResultArticle.setDescription(
+                                    bot.i18n().translate(inlineQueryResultArticle.getDescription(), Locale.ENGLISH));
+                        }
+                        return inlineQueryResultArticle;
+                    }
+                    return article;
+                })
+                .toList();
+
+
+        answerInlineQuery.setResults(translatedArticles);
         try {
-            absSender.execute(answerInlineQuery);
+            bot.bot().execute(answerInlineQuery);
         } catch (TelegramApiException e) {
             throw new RuntimeException(e);
         }
@@ -90,7 +94,7 @@ public class BotSender {
         @Override
         public String build() {
             super.header = super.header.stream()
-                    .map(h -> i18n.translate(h, locale))
+                    .map(h -> senderHolderBotProcessor.getBot(null).i18n().translate(h, locale))
                     .toList();
             return super.build();
         }

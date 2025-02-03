@@ -1,4 +1,4 @@
-package dev.zagirnur.petbot.sdk;
+package dev.zagirnur.petbot.sdk.provider;
 
 
 import dev.zagirnur.petbot.sdk.annotations.OnCallback;
@@ -8,7 +8,6 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 
 import java.lang.annotation.Annotation;
 
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isNoneEmpty;
 
 @Component
