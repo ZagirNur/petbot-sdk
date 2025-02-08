@@ -21,6 +21,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
     @Getter
     private final HandlerRegistry handlerRegistry;  // Для зарегистрированных обработчиков
     private final ContextProvider contextProvider;
+    private final UserProvider userProvider;
     private final UpdateDataProvider updateDataProvider;
     private final List<UpdatePrePostProcessor> updatePreProcessors;
     private final ExceptionHandler exceptionHandler;
@@ -32,7 +33,8 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             ContextProvider contextProvider,
             UpdateDataProvider updateDataProvider,
             List<UpdatePrePostProcessor> updatePreProcessors,
-            ExceptionHandler exceptionHandler
+            ExceptionHandler exceptionHandler,
+            UserProvider userProvider
     ) {
         super(botToken);
         this.botUsername = botUsername;
@@ -41,6 +43,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
         this.updateDataProvider = updateDataProvider;
         this.updatePreProcessors = updatePreProcessors;
         this.exceptionHandler = exceptionHandler;
+        this.userProvider = userProvider;
     }
 
     @Override
@@ -75,7 +78,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
 
         String text = update.getMessage().getText();
 
-        String state = contextProvider.getContext(update).getState();
+        String state = null;
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getMessageHandlers()) {
             Method method = handler.method();
             OnMessage annotation = method.getAnnotation(OnMessage.class);
@@ -88,13 +91,17 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             if (notMatchedPrefix) {
                 continue;
             }
-            boolean notMatchedState = !annotation.state().isEmpty() && !state.startsWith(annotation.state());
-            if (notMatchedState) {
-                continue;
-            }
             boolean notMatchedRegexp = !annotation.regexp().isEmpty() && !text.matches(annotation.regexp());
             if (notMatchedRegexp) {
                 continue;
+            }
+            if (!annotation.state().isEmpty()) {
+                if (state == null) {
+                    state = contextProvider.getContext(update).getState();
+                }
+                if (!state.startsWith(annotation.state())) {
+                    continue;
+                }
             }
 
             invokeHandlerMethod(annotation, handler, update);
@@ -167,6 +174,8 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
                 parameters[i] = contextProvider.getContext(update);
             } else if (UpdateData.class.isAssignableFrom(parameterTypes[i])) {
                 parameters[i] = updateDataProvider.getUpdateData(annotation, update);
+            } else if (BotUser.class.isAssignableFrom(parameterTypes[i])) {
+                parameters[i] = userProvider.getUser(update);
             } else {
                 parameters[i] = null;
             }

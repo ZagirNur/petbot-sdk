@@ -1,7 +1,10 @@
 package dev.zagirnur.petbot.sdk;
 
 import dev.zagirnur.petbot.sdk.provider.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.DefaultAbsSender;
@@ -12,8 +15,8 @@ import org.telegram.telegrambots.meta.bots.AbsSender;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
+@SuppressWarnings("unused")
 @Slf4j
 @Getter
 @Component
@@ -117,23 +120,16 @@ public class BotConfigurer {
         }
 
         if (botBuilder.exceptionHandler == null) {
-            botBuilder.exceptionHandler = new ExceptionHandler() {
-
-                @Override
-                public void handle(Update update,
-                                   Throwable t) {
+            botBuilder.exceptionHandler = (update, t) ->
                     log.error("Error while processing update", t);
-                }
-            };
         }
 
         if (botBuilder.i18n == null) {
-            botBuilder.i18n = new BotI18n() {
-                @Override
-                public String translate(String text,
-                                        Locale locale) {
-                    return text;
-                }
+            botBuilder.i18n = (text, locale) -> text;
+        }
+
+        if (botBuilder.userProvider == null) {
+            botBuilder.userProvider = update -> new BotUser() {
             };
         }
 
@@ -142,6 +138,7 @@ public class BotConfigurer {
                 botBuilder.botToken,
                 botBuilder.handlerClasses,
                 botBuilder.contextProvider,
+                botBuilder.userProvider,
                 botBuilder.updateDataProvider,
                 botBuilder.updatePreProcessors,
                 botBuilder.exceptionHandler,
@@ -155,6 +152,7 @@ public class BotConfigurer {
             String botToken,
             List<Class<?>> handlerClasses,
             ContextProvider contextProvider,
+            UserProvider userProvider,
             UpdateDataProvider updateDataProvider,
             List<UpdatePrePostProcessor> updatePreProcessors,
             ExceptionHandler exceptionHandler,
@@ -179,7 +177,8 @@ public class BotConfigurer {
                         contextProvider,
                         updateDataProvider,
                         updatePreProcessors,
-                        exceptionHandler
+                        exceptionHandler,
+                        userProvider
                 ) {
                     @Override
                     public void onUpdateReceived(Update update) {
