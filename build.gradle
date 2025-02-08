@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'dev.zagirnur'
-version = '1.0.0.3-SNAPSHOT'
+version = '1.0.0.4-SNAPSHOT'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
