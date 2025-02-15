@@ -2,6 +2,7 @@ package dev.zagirnur.petbot.sdk.util;
 
 import dev.zagirnur.petbot.sdk.provider.BotI18n;
 import dev.zagirnur.petbot.sdk.provider.ChatContext;
+import dev.zagirnur.petbot.sdk.provider.ContextProvider;
 import dev.zagirnur.petbot.sdk.provider.UpdateDataProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,9 +18,12 @@ import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static dev.zagirnur.petbot.sdk.util.BotUtils.getChatId;
 import static dev.zagirnur.petbot.sdk.util.BotUtils.getMessageId;
@@ -41,7 +45,7 @@ public class ReplyBuilder {
 
     private String text;
     private InlineKeyboardMarkup keyboard;
-    private boolean tagDeleteAfterUpdateMessage = false;
+    private final List<Consumer<Long>> doWithSentMessageId = new ArrayList<>();
     private ChatContext context;
 
 
@@ -50,9 +54,8 @@ public class ReplyBuilder {
         return this;
     }
 
-    public ReplyBuilder deleteAfterUpdateMessage(ChatContext context) {
-        this.tagDeleteAfterUpdateMessage = true;
-        this.context = context;
+    public ReplyBuilder doWithSentMessageId(Consumer<Long> consumer) {
+        doWithSentMessageId.add(consumer);
         return this;
     }
 
@@ -114,9 +117,7 @@ public class ReplyBuilder {
                 .build();
 
         long messageId = executeAndGetMessageId(sendMessage);
-        if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSAGE_FOR_DELETE, messageId);
-        }
+        doWithSentMessageId.forEach(consumer -> consumer.accept(messageId));
     }
 
     private long executeAndGetMessageId(SendMessage sendMessage) {
@@ -161,9 +162,7 @@ public class ReplyBuilder {
 
         execute(editMessage);
 
-        if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSAGE_FOR_DELETE, messageId.longValue());
-        }
+        doWithSentMessageId.forEach(consumer -> consumer.accept((long) messageId));
     }
 
     public void editIfCallbackMessageOrSend() {
@@ -191,9 +190,7 @@ public class ReplyBuilder {
 
         execute(editMessage);
 
-        if (tagDeleteAfterUpdateMessage) {
-            context.tagMessageId(MESSAGE_FOR_DELETE, getMessageId(update));
-        }
+        doWithSentMessageId.forEach(consumer -> consumer.accept(getMessageId(update)));
     }
 
     public void sendPopup() {
