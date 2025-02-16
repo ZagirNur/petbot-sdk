@@ -2,7 +2,6 @@ package dev.zagirnur.petbot.sdk.util;
 
 import dev.zagirnur.petbot.sdk.provider.BotI18n;
 import dev.zagirnur.petbot.sdk.provider.ChatContext;
-import dev.zagirnur.petbot.sdk.provider.ContextProvider;
 import dev.zagirnur.petbot.sdk.provider.UpdateDataProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,11 +22,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import static dev.zagirnur.petbot.sdk.util.BotUtils.getChatId;
 import static dev.zagirnur.petbot.sdk.util.BotUtils.getMessageId;
-import static dev.zagirnur.petbot.sdk.provider.MessageDeletingPreProcessor.MESSAGE_FOR_DELETE;
 
 /**
  * Упрощённый билдер для формирования ответа (send или update).
@@ -54,7 +51,7 @@ public class ReplyBuilder {
         return this;
     }
 
-    public ReplyBuilder doWithSentMessageId(Consumer<Long> consumer) {
+    public ReplyBuilder doAfterMessageSent(Consumer<Long> consumer) {
         doWithSentMessageId.add(consumer);
         return this;
     }
