@@ -209,4 +209,12 @@ public class ReplyBuilder {
 
         execute(method);
     }
+
+    public void deleteMessageIfExists(Long messageIdByTag) {
+        try {
+            deleteMessage(messageIdByTag);
+        } catch (Exception ignore) {
+            // ignore
+        }
+    }
 }

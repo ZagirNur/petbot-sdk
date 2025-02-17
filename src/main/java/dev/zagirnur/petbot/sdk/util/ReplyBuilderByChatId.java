@@ -190,12 +190,8 @@ public class ReplyBuilderByChatId {
     }
 
     public void deleteMessageIfExists(Long messageIdByTag) {
-        DeleteMessage method = DeleteMessage.builder()
-                .chatId(chatId)
-                .messageId(messageIdByTag.intValue())
-                .build();
         try {
-            execute(method);
+            deleteMessage(messageIdByTag);
         } catch (Exception ignore) {
             // ignore
         }
