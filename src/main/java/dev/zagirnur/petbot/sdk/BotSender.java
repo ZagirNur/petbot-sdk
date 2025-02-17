@@ -1,6 +1,7 @@
 package dev.zagirnur.petbot.sdk;
 
 import dev.zagirnur.petbot.sdk.util.ReplyBuilder;
+import dev.zagirnur.petbot.sdk.util.ReplyBuilderByChatId;
 import dev.zagirnur.petbot.sdk.util.TableBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 
 
+@SuppressWarnings("unused")
 @Component
 @RequiredArgsConstructor
 public class BotSender {
@@ -32,6 +34,17 @@ public class BotSender {
                               Locale locale) {
         BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(update);
         return new ReplyBuilder(bot.bot(), update, bot.updateDataProvider(), bot.i18n(), locale);
+    }
+
+    public ReplyBuilderByChatId reply(Long chatId) {
+        BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(null);
+        return new ReplyBuilderByChatId(bot.bot(), bot.updateDataProvider(), bot.i18n(), Locale.ENGLISH, chatId);
+    }
+
+    public ReplyBuilderByChatId reply(Long chatId,
+                                      Locale locale) {
+        BotConfigurer.SenderHolder bot = senderHolderBotProcessor.getBot(null);
+        return new ReplyBuilderByChatId(bot.bot(), bot.updateDataProvider(), bot.i18n(), locale, chatId);
     }
 
     public void sendAnswerInlineQuery(String inlineQueryId,

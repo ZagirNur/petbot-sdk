@@ -6,34 +6,46 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Getter
 public class SenderHolderBotProcessor {
 
-    private final ThreadLocal<BotConfigurer.SenderHolder> absSender = new ThreadLocal<>();
-    private final ConcurrentHashMap<Update, BotConfigurer.SenderHolder> cache = new ConcurrentHashMap<>();
+    private final ThreadLocal<String> threadLocal = new ThreadLocal<>();
+    private final ConcurrentHashMap<Update, String> updateCache = new ConcurrentHashMap<>();
+
+    private final Map<String, BotConfigurer.SenderHolder> botCache = new ConcurrentHashMap<>();
 
     @Lazy
     @Autowired
     private BotConfigurer botConfigurer;
 
     public void preProcess(Update update,
-                           BotConfigurer.SenderHolder bot) {
-        absSender.set(bot);
-        cache.put(update, bot);
+                           String botName) {
+        threadLocal.set(botName);
+        updateCache.put(update, botName);
     }
 
     public void postProcess(Update update) {
-        absSender.remove();
-        cache.remove(update);
+        threadLocal.remove();
+        updateCache.remove(update);
     }
 
     public BotConfigurer.SenderHolder getBot(Update update) {
-        BotConfigurer.SenderHolder registeredBot = cache.get(update);
+        BotConfigurer.SenderHolder registeredBot = null;
+        if (botCache.size() == 1) {
+            return botCache.values().iterator().next();
+        }
+        if (update != null) {
+            registeredBot = botCache.get(updateCache.get(update));
+        }
         if (registeredBot == null) {
-            registeredBot = absSender.get();
+            registeredBot = botCache.get(threadLocal.get());
+        }
+        if (registeredBot == null) {
+            throw new RuntimeException("Cannot find bot sender for session");
         }
         return registeredBot;
     }

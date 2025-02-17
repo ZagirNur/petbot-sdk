@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 @Documented
-@Repeatable(ContainerForOnCallback.class)
-public @interface OnCallback {
-    String prefix() default "";
+public @interface ContainerForOnCallback {
+
+    OnCallback[] value();
 }

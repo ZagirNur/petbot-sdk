@@ -168,6 +168,7 @@ public class BotConfigurer {
                 i18n,
                 updateDataProvider
         );
+        senderHolderBotProcessor.getBotCache().put(botUsername, senderHolder);
 
         TelegramBotFacade telegramBotFacade =
                 new TelegramBotFacade(
@@ -182,7 +183,7 @@ public class BotConfigurer {
                 ) {
                     @Override
                     public void onUpdateReceived(Update update) {
-                        senderHolderBotProcessor.preProcess(update, senderHolder);
+                        senderHolderBotProcessor.preProcess(update, botUsername);
                         super.onUpdateReceived(update);
                         senderHolderBotProcessor.postProcess(update);
                     }
