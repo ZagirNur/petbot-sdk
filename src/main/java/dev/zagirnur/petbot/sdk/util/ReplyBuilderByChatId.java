@@ -7,6 +7,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.telegram.telegrambots.meta.api.methods.BotApiMethod;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
@@ -15,6 +18,7 @@ import org.telegram.telegrambots.meta.bots.AbsSender;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -195,5 +199,37 @@ public class ReplyBuilderByChatId {
         } catch (Exception ignore) {
             // ignore
         }
+    }
+
+    /**
+     * Отправляет документ в чат. Используется для выгрузок (CSV и т.п.).
+     */
+    public void sendDocument(byte[] content, String fileName) {
+        SendDocument sendDocument = SendDocument.builder()
+                .chatId(chatId)
+                .document(new InputFile(new ByteArrayInputStream(content), fileName))
+                .caption(text)
+                .replyMarkup(keyboard)
+                .build();
+
+        try {
+            long sentMessageId = bot.execute(sendDocument).getMessageId().longValue();
+            doWithSentMessageId.forEach(consumer -> consumer.accept(sentMessageId));
+        } catch (TelegramApiException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Убирает инлайн-клавиатуру у сообщения, оставляя текст на месте.
+     */
+    public void deleteKeyboard(Long messageIdToEdit) {
+        EditMessageReplyMarkup method = EditMessageReplyMarkup.builder()
+                .chatId(chatId)
+                .messageId(messageIdToEdit.intValue())
+                .replyMarkup(null)
+                .build();
+
+        execute(method);
     }
 }
