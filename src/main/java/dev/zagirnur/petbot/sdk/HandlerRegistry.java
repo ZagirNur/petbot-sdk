@@ -2,6 +2,9 @@ package dev.zagirnur.petbot.sdk;
 
 import lombok.Getter;
 
+import dev.zagirnur.petbot.sdk.annotations.OnCallback;
+import dev.zagirnur.petbot.sdk.annotations.OnMessage;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -65,13 +68,36 @@ public class HandlerRegistry {
     }
 
     private void sortHandlers(List<HandlerMethod> handlers) {
-        handlers.sort(Comparator.comparingInt(h -> {
-            int index = handlerClassesOrder.indexOf(h.bean().getClass());
-            if (index == -1) {
-                throw new IllegalStateException("Handler class not found in order list: " + h.bean().getClass());
-            }
-            return index;
-        }));
+        handlers.sort(Comparator
+                .comparingInt((HandlerMethod h) -> {
+                    int index = handlerClassesOrder.indexOf(h.bean().getClass());
+                    if (index == -1) {
+                        throw new IllegalStateException("Handler class not found in order list: " + h.bean().getClass());
+                    }
+                    return index;
+                })
+                .thenComparingInt(HandlerRegistry::specificity));
+    }
+
+    /**
+     * Внутри класса порядок методов задаёт JVM, а он не гарантирован, поэтому
+     * обработчики упорядочиваются по специфичности триггера: иначе общий обработчик
+     * текста может перехватить сообщение, предназначенное обработчику состояния.
+     * Чем меньше число, тем раньше проверяется обработчик.
+     */
+    private static int specificity(HandlerMethod h) {
+        Annotation a = h.annotation();
+        if (a instanceof OnMessage m) {
+            if (!m.command().isEmpty()) return 0;
+            if (!m.state().isEmpty()) return 1;
+            if (!m.prefix().isEmpty()) return 2;
+            if (!m.regexp().isEmpty()) return 3;
+            return 4;
+        }
+        if (a instanceof OnCallback c) {
+            return c.prefix().isEmpty() ? 4 : 0;
+        }
+        return 4;
     }
 
     /**
