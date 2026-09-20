@@ -2,6 +2,7 @@ package dev.zagirnur.petbot.sdk;
 
 import lombok.Getter;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,21 +31,33 @@ public class HandlerRegistry {
     }
 
     public void registerMessageHandler(Object bean, Method method) {
-        messageHandlers.add(new HandlerMethod(bean, method));
+        registerMessageHandler(bean, method, null);
+    }
+
+    public void registerMessageHandler(Object bean, Method method, Annotation annotation) {
+        messageHandlers.add(new HandlerMethod(bean, method, annotation));
         if (isOrderSet) {
             sortHandlers(messageHandlers);
         }
     }
 
     public void registerCallbackHandler(Object bean, Method method) {
-        callbackHandlers.add(new HandlerMethod(bean, method));
+        registerCallbackHandler(bean, method, null);
+    }
+
+    public void registerCallbackHandler(Object bean, Method method, Annotation annotation) {
+        callbackHandlers.add(new HandlerMethod(bean, method, annotation));
         if (isOrderSet) {
             sortHandlers(callbackHandlers);
         }
     }
 
     public void registerInlineQueryHandler(Object bean, Method method) {
-        inlineQueryHandlers.add(new HandlerMethod(bean, method));
+        registerInlineQueryHandler(bean, method, null);
+    }
+
+    public void registerInlineQueryHandler(Object bean, Method method, Annotation annotation) {
+        inlineQueryHandlers.add(new HandlerMethod(bean, method, annotation));
         if (isOrderSet) {
             sortHandlers(inlineQueryHandlers);
         }
@@ -61,6 +74,10 @@ public class HandlerRegistry {
         }));
     }
 
-    public record HandlerMethod(Object bean, Method method) {
+    /**
+     * @param annotation конкретный триггер: у метода их может быть несколько
+     *                   (например, три @OnMessage с разными командами)
+     */
+    public record HandlerMethod(Object bean, Method method, Annotation annotation) {
     }
 }

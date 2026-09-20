@@ -7,6 +7,7 @@ import java.lang.annotation.*;
 @Target(ElementType.METHOD)
 @Documented
 @TriggerAnnotation
+@Repeatable(ContainerForOnMessage.class)
 public @interface OnMessage {
     /**
      * Если задано, то метод будет срабатывать, 

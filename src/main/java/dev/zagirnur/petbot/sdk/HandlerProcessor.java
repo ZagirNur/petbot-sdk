@@ -40,14 +40,14 @@ public class HandlerProcessor implements SmartInitializingSingleton {
         }
         var handlerRegistry = first.get().handlerRegistry();
         for (Method method : beanClass.getDeclaredMethods()) {
-            if (method.isAnnotationPresent(OnMessage.class)) {
-                handlerRegistry.registerMessageHandler(bean, method);
+            for (OnMessage onMessage : method.getAnnotationsByType(OnMessage.class)) {
+                handlerRegistry.registerMessageHandler(bean, method, onMessage);
             }
-            if (method.isAnnotationPresent(OnCallback.class)) {
-                handlerRegistry.registerCallbackHandler(bean, method);
+            for (OnCallback onCallback : method.getAnnotationsByType(OnCallback.class)) {
+                handlerRegistry.registerCallbackHandler(bean, method, onCallback);
             }
-            if (method.isAnnotationPresent(OnInlineQuery.class)) {
-                handlerRegistry.registerInlineQueryHandler(bean, method);
+            for (OnInlineQuery onInlineQuery : method.getAnnotationsByType(OnInlineQuery.class)) {
+                handlerRegistry.registerInlineQueryHandler(bean, method, onInlineQuery);
             }
         }
     }

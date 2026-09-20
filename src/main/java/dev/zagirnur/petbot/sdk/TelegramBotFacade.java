@@ -81,7 +81,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
         String state = null;
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getMessageHandlers()) {
             Method method = handler.method();
-            OnMessage annotation = method.getAnnotation(OnMessage.class);
+            OnMessage annotation = (OnMessage) handler.annotation();
 
             boolean notMatchedCommand = !annotation.command().isEmpty() && !text.equals(annotation.command());
             if (notMatchedCommand) {
@@ -114,7 +114,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
 
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getCallbackHandlers()) {
             Method method = handler.method();
-            OnCallback annotation = method.getAnnotation(OnCallback.class);
+            OnCallback annotation = (OnCallback) handler.annotation();
 
             if (callbackData.startsWith(annotation.prefix())) {
                 invokeHandlerMethod(annotation, handler, update); // Вызов метода
@@ -128,7 +128,7 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
 
         for (HandlerRegistry.HandlerMethod handler : handlerRegistry.getInlineQueryHandlers()) {
             Method method = handler.method();
-            OnInlineQuery annotation = method.getAnnotation(OnInlineQuery.class);
+            OnInlineQuery annotation = (OnInlineQuery) handler.annotation();
 
             if (annotation.prefix().isEmpty() || inlineQuery.startsWith(annotation.prefix())) {
                 invokeHandlerMethod(annotation, handler, update); // Вызов метода
