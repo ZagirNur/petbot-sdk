@@ -173,11 +173,13 @@ public class TelegramBotFacade extends TelegramLongPollingBot {
             } else if (ChatContext.class.isAssignableFrom(parameterTypes[i])) {
                 parameters[i] = contextProvider.getContext(update);
             } else if (UpdateData.class.isAssignableFrom(parameterTypes[i])) {
-                parameters[i] = updateDataProvider.getUpdateData(annotation, update);
+                parameters[i] = updateDataProvider.resolveParameter(annotation, update, parameterTypes[i]);
             } else if (BotUser.class.isAssignableFrom(parameterTypes[i])) {
                 parameters[i] = userProvider.getUser(update);
             } else {
-                parameters[i] = null;
+                // прочие типы (UUID, String, enum и т.п.) тоже отдаём провайдеру: он знает,
+                // как разобрать callback_data. Провайдер возвращает null, если не смог.
+                parameters[i] = updateDataProvider.resolveParameter(annotation, update, parameterTypes[i]);
             }
         }
 
